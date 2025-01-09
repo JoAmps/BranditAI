@@ -58,6 +58,7 @@ class WebsiteScraper:
         return modified_html
 
     async def scraper(self, html, model):
+
         batch_size = 20_000
         combined_content = []
         count = 0
@@ -74,14 +75,10 @@ class WebsiteScraper:
                 pbar.set_description(f"Generating batch {count}")
                 if isinstance(batch, bytes):
                     batch = batch.decode("utf-8")
-                prompt = f"""
-                    Take this html input and extract the relevant texts that is human readable information from it, try and structure it. The information extracted should be ready to be used, dont add any extra comments or information, just extract the relevant information, thats it
-                    Make sure not to include any irrelevant items such as image height and width, etc and also dont include any styles or anything        "<{batch}>"
-                    """
                 retry_count = 0
                 while retry_count < 5:
                     try:
-                        output = await model.model(prompt)
+                        output = await model.text_extracter_from_html(batch)
                         break
                     except Exception as e:
                         error_count += 1
@@ -89,7 +86,7 @@ class WebsiteScraper:
                         print(f"An error occurred: {str(e)}")
                         print("Retrying...")
                         if error_count > 5:
-                            print("Moving to next url, too many errors")
+                            print("An error occured, shutting down")
                             break
                         time.sleep(2)
                 combined_content.append(output)
@@ -107,20 +104,10 @@ class WebsiteScraper:
                 ):
                     batch = all_combined_content[i : i + batch_size]
 
-                    prompt = f"""
-                        Take this information and remove all html tags, leaving only texts that is human readable and relevant for semantic similiarity.
-                        Remember to try and provide a structure to it, so we can perform good semantic similarity.
-                        Remember not to add any extra information besides things extracted from the information that is relevant for semantic similarity, dont add any image links or etc
-                        DOnt be repeating sentences and please include every relevant information in the texts in the html, because any missed information would be a disaster for us
-                        Please dont include any information about what the html is, or what the website uses, its irrelevant for semantic simililarity
-                        Make sure to structure it very well, each section separated from the other, make it very clear to tell and capture all the details
-                        Make sure not to call anything like item 1, item 2, provide the actual name as its in the html
-                        "<{batch}>"
-                        """
                     retry_count = 0
                     while retry_count < 5:
                         try:
-                            output = await model.model(prompt)
+                            output = await model.text_organizer_from_html(batch)
                             break
                         except Exception as e:
                             error_count += 1
@@ -128,7 +115,7 @@ class WebsiteScraper:
                             print(f"An error occurred: {str(e)}")
                             print("Retrying...")
                             if error_count > 5:
-                                print("Moving to next url, too many errors")
+                                print("An error occured, shutting down")
                                 break
                             time.sleep(2)
 
